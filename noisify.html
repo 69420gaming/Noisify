@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noisify - Text to PNG Noise Converter</title>
+    <!-- Tailwind CSS for clean styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for modern design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for clean visuals -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PDF.js for reading PDF files in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- JSZip for reading and compiling EPUB files in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- jsPDF for client-side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 50% 50%, #11101d 0%, #08070b 100%);
+        }
+        .heading-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for aesthetic consistency */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d0c14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b2e5c;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f3b7c;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between antialiased selection:bg-purple-500 selection:text-white pb-8">
+
+    <!-- Header Section -->
+    <header class="border-b border-white/5 bg-black/20 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-2.5 rounded-xl shadow-lg shadow-purple-500/20">
+                    <i data-lucide="binary" class="w-6 h-6 text-white animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="heading-font text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">Noisify</h1>
+                    <p class="text-[10px] text-purple-400 font-semibold tracking-widest uppercase">Secure Noise Generator</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    100% Lossless
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-6xl mx-auto px-4 md:px-6 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Interactive Left / Main Panel (Encoding & Decoding) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            <!-- Navigation Tabs -->
+            <div class="bg-white/5 p-1 rounded-xl border border-white/10 flex">
+                <button id="tab-encode" onclick="switchTab('encode')" class="flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/20">
+                    <i data-lucide="pencil-line" class="w-4 h-4"></i>
+                    Text Encoder <span class="text-[10px] opacity-75 px-1.5 py-0.5 rounded bg-black/30 font-mono">Encode</span>
+                </button>
+                <button id="tab-decode" onclick="switchTab('decode')" class="flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-white/5">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    Image Decoder <span class="text-[10px] opacity-75 px-1.5 py-0.5 rounded bg-white/5 font-mono">Decode</span>
+                </button>
+            </div>
+
+            <!-- ENCODE VIEW -->
+            <div id="view-encode" class="space-y-6">
+                <!-- Text Input Card -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden group">
+                    <div class="absolute -right-24 -top-24 w-48 h-48 bg-purple-500/10 blur-3xl rounded-full pointer-events-none"></div>
+                    
+                    <div class="flex items-center justify-between mb-4">
+                        <label for="text-input" class="heading-font text-sm font-semibold text-slate-200 flex items-center gap-2">
+                            <i data-lucide="align-left" class="w-4 h-4 text-purple-400"></i>
+                            Input Text Message
+                        </label>
+                        <span id="char-counter" class="text-xs text-slate-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/5 font-mono">0 characters</span>
+                    </div>
+
+                    <textarea id="text-input" placeholder="Type or paste your message here... Alternatively, import text from a document file using the zone below. 🤫" 
+                        class="w-full h-44 bg-black/40 text-slate-200 placeholder-slate-500 p-4 rounded-xl border border-white/10 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition resize-none text-sm leading-relaxed"></textarea>
+
+                    <!-- Document File Input Drop Zone -->
+                    <div id="doc-import-zone" class="mt-4 p-4 border border-dashed border-white/10 hover:border-purple-500/40 bg-black/20 rounded-xl transition duration-200 text-center relative cursor-pointer" onclick="triggerDocUpload()">
+                        <input type="file" id="doc-loader" accept=".txt,.pdf,.epub" class="hidden" onchange="handleDocUpload(event)">
+                        <div id="doc-import-prompt" class="flex items-center justify-center gap-2 text-xs text-slate-300">
+                            <i data-lucide="file-up" class="w-4 h-4 text-purple-400"></i>
+                            <span>Import text from <strong class="text-purple-400">.txt, .pdf, or .epub</strong></span>
+                        </div>
+                        <div id="doc-import-loading" class="hidden flex items-center justify-center gap-2 text-xs text-slate-400 animate-pulse">
+                            <i data-lucide="loader" class="w-4 h-4 text-purple-400 animate-spin"></i>
+                            <span>Extracting text content, please wait...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button onclick="insertSampleText()" class="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-slate-300 font-medium transition flex items-center gap-1.5 border border-white/5">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i> Insert Sample
+                        </button>
+                        <button onclick="clearTextInput()" class="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-xs text-slate-300 hover:text-red-400 font-medium transition flex items-center gap-1.5 border border-white/5 ml-auto">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Generation Options -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl space-y-4">
+                    <h3 class="heading-font text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i data-lucide="sliders" class="w-4 h-4 text-purple-400"></i>
+                        Aesthetic Settings
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="noise-pad" class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                                    Canvas Grid Size
+                                    <span class="group relative">
+                                        <i data-lucide="help-circle" class="w-3 h-3 text-slate-500 cursor-help"></i>
+                                        <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-[10px] text-slate-300 rounded shadow-xl border border-white/10 opacity-0 pointer-events-none group-hover:opacity-100 transition duration-200 z-50">
+                                            The width and height of the square image. Remaining space is automatically filled with random static.
+                                        </span>
+                                    </span>
+                                </label>
+                                <span id="noise-pad-val" class="text-xs font-mono text-purple-400 font-bold">Auto (Square)</span>
+                            </div>
+                            <select id="noise-pad" class="w-full bg-black/40 text-slate-300 p-2.5 rounded-xl border border-white/10 focus:border-purple-500 outline-none text-xs transition">
+                                <option value="auto">Auto-Fit (Perfect Square)</option>
+                                <option value="16">16 x 16 (Up to 253 Characters)</option>
+                                <option value="32">32 x 32 (Up to 1,021 Characters)</option>
+                                <option value="64">64 x 64 (Up to 4,093 Characters)</option>
+                                <option value="128">128 x 128 (Up to 16,381 Characters)</option>
+                                <option value="256">256 x 256 (Up to 65,533 Characters)</option>
+                                <option value="512">512 x 512 (Up to 262,141 Characters)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                                    Display Scale (Zoom)
+                                </label>
+                                <span id="zoom-val" class="text-xs font-mono text-purple-400 font-bold">12x</span>
+                            </div>
+                            <input id="zoom-slider" type="range" min="2" max="24" step="2" value="12" oninput="updateZoomValue(this.value)"
+                                class="w-full accent-purple-500 bg-black/40 h-1.5 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+
+                    <button onclick="generateNoiseImage()" class="w-full mt-2 py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 font-bold text-sm tracking-wide text-white transition duration-200 shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 group">
+                        <i data-lucide="cpu" class="w-4 h-4 group-hover:rotate-12 transition"></i>
+                        Convert Text to Noise
+                    </button>
+                </div>
+            </div>
+
+            <!-- DECODE VIEW -->
+            <div id="view-decode" class="space-y-6 hidden">
+                <!-- Image Upload Zone -->
+                <div class="bg-white/5 border-2 border-dashed border-white/10 hover:border-purple-500/40 rounded-2xl p-8 backdrop-blur-xl text-center relative overflow-hidden transition group cursor-pointer"
+                     onclick="triggerImageUpload()" id="drop-zone">
+                    <input type="file" id="image-loader" accept="image/png" class="hidden" onchange="handleImageUpload(event)">
+                    <div class="absolute -left-24 -top-24 w-48 h-48 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none"></div>
+                    
+                    <div class="flex flex-col items-center justify-center gap-4 py-6" id="upload-prompt">
+                        <div class="p-4 bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition duration-300 shadow-lg">
+                            <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-400"></i>
+                        </div>
+                        <div>
+                            <p class="heading-font text-base font-semibold text-slate-200">Drop your Noisify PNG here</p>
+                            <p class="text-xs text-slate-400 mt-1.5">or click to browse files from your device</p>
+                        </div>
+                        <span class="text-[10px] font-semibold tracking-wider text-slate-500 uppercase bg-black/30 px-2.5 py-1 rounded-md border border-white/5">Only 1:1 original PNGs are supported</span>
+                    </div>
+
+                    <!-- Uploaded Image Information Preview -->
+                    <div class="hidden flex-col items-center justify-center gap-3 py-4" id="upload-preview-container">
+                        <div class="relative inline-block border-2 border-purple-500/50 p-1 bg-black/40 rounded-lg">
+                            <img id="upload-preview" class="w-16 h-16 object-contain image-rendering-pixelated" style="image-rendering: pixelated; image-rendering: crisp-edges;" alt="Uploaded noise preview">
+                        </div>
+                        <div>
+                            <p id="upload-filename" class="text-xs font-mono font-semibold text-slate-200 truncate max-w-xs">image.png</p>
+                            <p id="upload-dimensions" class="text-[10px] text-slate-400 mt-0.5">0 x 0 px</p>
+                        </div>
+                        <button onclick="event.stopPropagation(); resetUploadZone()" class="px-3 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-[10px] font-bold text-red-400 transition flex items-center gap-1 border border-red-500/20 mx-auto">
+                            <i data-lucide="x" class="w-3 h-3"></i> Remove Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Decoded Output Card -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="heading-font text-sm font-semibold text-slate-200 flex items-center gap-2">
+                            <i data-lucide="unlock" class="w-4 h-4 text-emerald-400"></i>
+                            Decoded Message
+                        </h3>
+                        <span id="decode-status" class="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-white/5 text-slate-400 border border-white/5">Waiting...</span>
+                    </div>
+
+                    <div id="decoded-output-wrapper" class="relative">
+                        <textarea id="decoded-output" readonly placeholder="The decoded text message will appear here once you load a valid noise image..." 
+                            class="w-full h-44 bg-black/40 text-slate-300 placeholder-slate-500 p-4 rounded-xl border border-white/10 focus:border-purple-500 outline-none transition resize-none text-sm leading-relaxed font-mono"></textarea>
+                    </div>
+
+                    <!-- Exporters Deck Section -->
+                    <div class="space-y-3">
+                        <label class="heading-font text-[11px] font-semibold tracking-wider text-slate-400 uppercase block mb-1">Export / Save Decoded Text</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                            <button id="btn-copy" onclick="copyDecodedText()" disabled class="sm:col-span-1 py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                                Copy
+                            </button>
+                            <button id="btn-export-txt" onclick="exportDecoded('txt')" disabled class="py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i>
+                                .TXT
+                            </button>
+                            <button id="btn-export-pdf" onclick="exportDecoded('pdf')" disabled class="py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i data-lucide="file-down" class="w-4 h-4 text-red-400"></i>
+                                .PDF
+                            </button>
+                            <button id="btn-export-epub" onclick="exportDecoded('epub')" disabled class="py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <i data-lucide="book-open" class="w-4 h-4 text-blue-400"></i>
+                                .EPUB
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Preview & Stats Panel (Always Visible/Responsive) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            <!-- Live Preview Card -->
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl flex flex-col items-center justify-between min-h-[420px] relative overflow-hidden group">
+                <div class="absolute -right-24 -bottom-24 w-48 h-48 bg-pink-500/10 blur-3xl rounded-full pointer-events-none"></div>
+                
+                <div class="w-full flex items-center justify-between mb-4">
+                    <h3 class="heading-font text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i data-lucide="image" class="w-4 h-4 text-purple-400"></i>
+                        Active Workspace Canvas
+                    </h3>
+                    <span id="canvas-status" class="text-[10px] font-bold tracking-wider text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">Empty</span>
+                </div>
+
+                <!-- Canvas Wrapper -->
+                <div class="flex-grow flex items-center justify-center w-full min-h-[220px]">
+                    <div id="canvas-container" class="p-4 bg-black/60 rounded-xl border border-white/10 shadow-inner flex items-center justify-center max-w-full overflow-auto relative group">
+                        <!-- We'll draw directly on this canvas -->
+                        <canvas id="noise-canvas" class="max-w-full transition-transform duration-200 shadow-2xl" style="image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
+                        
+                        <!-- Empty State Indicator -->
+                        <div id="canvas-placeholder" class="text-center p-6 space-y-2 max-w-xs">
+                            <div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
+                                <i data-lucide="image" class="w-6 h-6 animate-bounce"></i>
+                            </div>
+                            <p class="text-xs font-semibold text-slate-300">No Image Preview Available</p>
+                            <p class="text-[10px] text-slate-500">Enter your text on the left and click generate to render the noise canvas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Items for Generated Canvas -->
+                <div class="w-full mt-6 space-y-3">
+                    <div id="canvas-stats" class="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 border-t border-white/5 pt-4 hidden">
+                        <div>Grid Resolution: <span id="stat-res" class="text-purple-400 font-bold">0x0</span></div>
+                        <div>Total Data Pixels: <span id="stat-pixels" class="text-purple-400 font-bold">0</span></div>
+                        <div>Padding Pixels: <span id="stat-pad" class="text-indigo-400">0</span></div>
+                        <div>File Size Estimate: <span id="stat-size" class="text-indigo-400">~1 KB</span></div>
+                    </div>
+
+                    <button id="btn-download" disabled onclick="downloadNoisePNG()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-gradient-to-r hover:from-pink-500 hover:to-purple-500 text-slate-400 hover:text-white font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Download Lossless PNG
+                    </button>
+                </div>
+            </div>
+
+            <!-- Technical Information Panel -->
+            <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
+                <div class="absolute -left-24 -bottom-24 w-48 h-48 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none"></div>
+                <h4 class="heading-font text-xs font-bold text-purple-400 uppercase tracking-widest mb-3">How does this tool work? ℹ️</h4>
+                <div class="text-xs text-slate-300 space-y-3.5 leading-relaxed">
+                    <p>
+                        This tool converts text data into a visual representation by translating characters directly into individual pixels. It supports every single Unicode character (including surrogate pairs, mathematical notation, and emojis) by mapping character codepoints to 24-bit color states:
+                    </p>
+                    <div class="bg-black/30 p-3 rounded-xl border border-white/5 space-y-2">
+                        <div class="flex items-start gap-2">
+                            <span class="text-purple-400 font-bold">🔴 Red:</span>
+                            <span>Bits 16–23 of the Unicode codepoint (plus a dynamic visual offset).</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-teal-400 font-bold">🟢 Green:</span>
+                            <span>Bits 8–15 of the Unicode codepoint (plus a dynamic visual offset).</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-blue-400 font-bold">🔵 Blue:</span>
+                            <span>Bits 0–7 of the Unicode codepoint (plus a dynamic visual offset).</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-indigo-300 font-bold">⚪ Opacity:</span>
+                            <span>Opaque (255) for characters to guarantee absolute lossless preservation against web browser alpha premultiplication.</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 italic">
+                        The visual offsets are dynamic mathematical patterns that scatter values smoothly across the RGB spectrum. This spreads the colors beautifully to produce realistic aesthetic static instead of dull, solid shades. Any remaining canvas padding is randomized with variable opacities.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Interactive Custom Toast System (No Browser Alerts) -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4"></div>
+
+    <!-- Footer -->
+    <footer class="text-center text-[10px] text-slate-500 mt-8 border-t border-white/5 pt-6 max-w-6xl mx-auto w-full">
+        <p>Noisify runs entirely in your web browser. No data is sent to external servers. Your messages remain private. 🔒</p>
+    </footer>
+
+    <script>
+        // Setup Lucide Icons safely
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // Initialize PDF.js worker reference safely to avoid ReferenceErrors
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
+
+        // Application State
+        let currentTab = 'encode';
+        let generatedBlobUrl = null;
+        let originalFileName = 'secret-noise.png';
+
+        // Magic Header signature to verify a valid Noisify file ("N", "O", "I" in UTF-8)
+        const MAGIC_HEADER = [78, 79, 73]; 
+
+        // Handle text area character count
+        const textInput = document.getElementById('text-input');
+        const charCounter = document.getElementById('char-counter');
+        
+        textInput.addEventListener('input', () => {
+            // Using Array.from to correctly measure actual Unicode characters (including high plane characters/emojis)
+            const chars = Array.from(textInput.value);
+            charCounter.textContent = `${chars.length.toLocaleString()} characters`;
+            if (chars.length > 262140) {
+                charCounter.classList.add('text-red-400');
+            } else {
+                charCounter.classList.remove('text-red-400');
+            }
+        });
+
+        // Sample insert helper
+        function insertSampleText() {
+            textInput.value = `Hello! 🤫 This sample message demonstrates that Noisify can fit and encode every single Unicode character!
+
+🌟 Emojis & Symbols: 🤫✨🎉🔥🚀 Runes: ᚛ ᚑᚔᚁ ᚜ Math: ∀ ∃ ∈ ∉ ∑ ∏
+🌏 Multilingual test:
+• Chinese: 漢字 (Hanzi)
+• Japanese: ひらがな (Hiragana)
+• Arabic: العربية (Al-ʿArabiyyah)
+• Hindi: हिन्दी (Hindi)
+• Greek: Ελληνικά (Elliniká)
+• Cyrillic: Русский (Russkiy)
+
+Because every single character is mapped directly to exactly one pixel in the generated PNG, there is absolutely no loss of text data. Enjoy this visual cryptography tool! 🚀`;
+            // Trigger input count update
+            textInput.dispatchEvent(new Event('input'));
+            showToast('Sample text inserted successfully.', 'info');
+        }
+
+        // Clear text input
+        function clearTextInput() {
+            textInput.value = '';
+            textInput.dispatchEvent(new Event('input'));
+            showToast('Text input cleared.', 'info');
+        }
+
+        // Tab switcher
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabEncode = document.getElementById('tab-encode');
+            const tabDecode = document.getElementById('tab-decode');
+            const viewEncode = document.getElementById('view-encode');
+            const viewDecode = document.getElementById('view-decode');
+
+            if (tab === 'encode') {
+                tabEncode.className = "flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/20";
+                tabDecode.className = "flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-white/5";
+                viewEncode.classList.remove('hidden');
+                viewDecode.classList.add('hidden');
+            } else {
+                tabDecode.className = "flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-900/20";
+                tabEncode.className = "flex-1 py-3 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition duration-200 text-slate-400 hover:text-slate-200 hover:bg-white/5";
+                viewDecode.classList.remove('hidden');
+                viewEncode.classList.add('hidden');
+            }
+        }
+
+        // Custom toast helper
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-slate-900 border-white/10 text-slate-100';
+            let icon = 'info';
+            
+            if (type === 'success') {
+                bgClass = 'bg-emerald-950/90 border-emerald-500/30 text-emerald-100';
+                icon = 'check-circle';
+            } else if (type === 'error') {
+                bgClass = 'bg-red-950/90 border-red-500/30 text-red-100';
+                icon = 'alert-triangle';
+            }
+
+            toast.className = `p-4 rounded-xl border ${bgClass} shadow-2xl flex items-center gap-3 transform translate-y-2 opacity-0 transition duration-300 pointer-events-auto`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-5 h-5 flex-shrink-0"></i>
+                <p class="text-xs font-semibold leading-normal">${message}</p>
+            `;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            // Animate Out
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+
+        // Update zoom view
+        function updateZoomValue(val) {
+            document.getElementById('zoom-val').textContent = `${val}x`;
+            const canvas = document.getElementById('noise-canvas');
+            if (canvas) {
+                canvas.style.transform = `scale(${val / 10})`;
+            }
+        }
+
+        // Document loader triggers
+        function triggerDocUpload() {
+            document.getElementById('doc-loader').click();
+        }
+
+        const docImportZone = document.getElementById('doc-import-zone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            docImportZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                docImportZone.classList.add('border-purple-500', 'bg-purple-500/5');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            docImportZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                docImportZone.classList.remove('border-purple-500', 'bg-purple-500/5');
+            }, false);
+        });
+
+        docImportZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                document.getElementById('doc-loader').files = files;
+                handleDocUpload({ target: { files: files } });
+            }
+        });
+
+        // Document ingestion pipeline
+        async function handleDocUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const filename = file.name.toLowerCase();
+            const promptEl = document.getElementById('doc-import-prompt');
+            const loadingEl = document.getElementById('doc-import-loading');
+
+            // Show loading state
+            promptEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+
+            try {
+                let extractedText = '';
+
+                if (filename.endsWith('.txt')) {
+                    extractedText = await readTxtFile(file);
+                } else if (filename.endsWith('.pdf')) {
+                    extractedText = await readPdfFile(file);
+                } else if (filename.endsWith('.epub')) {
+                    extractedText = await readEpubFile(file);
+                } else {
+                    throw new Error("Unsupported file format. Please upload a .txt, .pdf, or .epub file.");
+                }
+
+                if (!extractedText.trim()) {
+                    throw new Error("The uploaded document appears to be empty or contains no extractable text.");
+                }
+
+                // Populate text input
+                textInput.value = extractedText;
+                textInput.dispatchEvent(new Event('input'));
+                showToast(`Successfully extracted text from ${file.name}!`, "success");
+
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "An error occurred while parsing the document.", "error");
+            } finally {
+                // Reset visual state
+                promptEl.classList.remove('hidden');
+                loadingEl.classList.add('hidden');
+                document.getElementById('doc-loader').value = '';
+            }
+        }
+
+        // Plain Text Reader
+        function readTxtFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error("Failed to read the text file."));
+                reader.readAsText(file);
+            });
+        }
+
+        // PDF Text Reader using PDF.js
+        function readPdfFile(file) {
+            return new Promise((resolve, reject) => {
+                if (typeof pdfjsLib === 'undefined') {
+                    reject(new Error("The PDF library (PDF.js) failed to load. Please check your internet connection or try again."));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        let extractedText = '';
+                        
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            extractedText += pageText + '\n';
+                        }
+                        resolve(extractedText);
+                    } catch (err) {
+                        reject(new Error("Failed to parse PDF document. It might be scan-only or password protected."));
+                    }
+                };
+                reader.onerror = () => reject(new Error("Failed to read PDF file."));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // EPUB Reader using JSZip
+        function readEpubFile(file) {
+            return new Promise((resolve, reject) => {
+                if (typeof JSZip === 'undefined') {
+                    reject(new Error("The zip library (JSZip) failed to load. Please check your internet connection."));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const zip = await JSZip.loadAsync(arrayBuffer);
+                        
+                        // 1. Resolve reading order (OPF mapping)
+                        let opfPath = '';
+                        const containerFile = zip.file("META-INF/container.xml");
+                        if (containerFile) {
+                            const containerXmlText = await containerFile.async("text");
+                            const parser = new DOMParser();
+                            const containerDoc = parser.parseFromString(containerXmlText, "text/xml");
+                            const rootfile = containerDoc.querySelector("rootfile");
+                            if (rootfile) {
+                                opfPath = rootfile.getAttribute("full-path");
+                            }
+                        }
+                        
+                        // Fallback search for OPF inside the archive
+                        if (!opfPath) {
+                            const opfFiles = Object.keys(zip.files).filter(name => name.endsWith('.opf'));
+                            if (opfFiles.length > 0) {
+                                opfPath = opfFiles[0];
+                            }
+                        }
+                        
+                        if (!opfPath) {
+                            throw new Error("Could not locate OPF metadata in EPUB package.");
+                        }
+
+                        // 2. Parse OPF document reading order
+                        const opfFile = zip.file(opfPath);
+                        const opfText = await opfFile.async("text");
+                        const parser = new DOMParser();
+                        const opfDoc = parser.parseFromString(opfText, "text/xml");
+                        
+                        // Build manifest database
+                        const manifestItems = {};
+                        const items = opfDoc.querySelectorAll("manifest > item");
+                        items.forEach(item => {
+                            manifestItems[item.getAttribute("id")] = item.getAttribute("href");
+                        });
+                        
+                        // Retrieve OPF Directory to properly compute relative resource urls
+                        const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+                        
+                        // Loop through spine items sequentially to read files in proper reading order
+                        const itemrefs = opfDoc.querySelectorAll("spine > itemref");
+                        let fullText = '';
+                        
+                        for (let ref of itemrefs) {
+                            const idref = ref.getAttribute("idref");
+                            const relativeHref = manifestItems[idref];
+                            if (relativeHref) {
+                                const fullHref = resolveRelativePath(opfDir, relativeHref);
+                                let htmlFile = zip.file(fullHref);
+                                
+                                // Robust fallback path finder (ignores leading slash or slight path differences)
+                                if (!htmlFile) {
+                                    const cleanHref = relativeHref.split('/').pop();
+                                    const matchedKey = Object.keys(zip.files).find(key => key.endsWith(cleanHref));
+                                    if (matchedKey) {
+                                        htmlFile = zip.file(matchedKey);
+                                    }
+                                }
+
+                                if (htmlFile) {
+                                    const htmlText = await htmlFile.async("text");
+                                    fullText += stripHtmlTags(htmlText) + '\n\n';
+                                }
+                            }
+                        }
+                        
+                        // Fallback reading order (all html files sorted alphabetically) if OPF spine failed
+                        if (!fullText.trim()) {
+                            const htmlFiles = Object.keys(zip.files)
+                                .filter(name => name.endsWith('.html') || name.endsWith('.xhtml') || name.endsWith('.htm'))
+                                .sort();
+                            for (let filename of htmlFiles) {
+                                const htmlText = await zip.file(filename).async("text");
+                                fullText += stripHtmlTags(htmlText) + '\n\n';
+                            }
+                        }
+                        
+                        resolve(fullText);
+
+                    } catch (err) {
+                        reject(new Error("Failed to process EPUB document framework: " + err.message));
+                    }
+                };
+                reader.onerror = () => reject(new Error("Failed to read EPUB archive."));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // EPUB Path helpers
+        function resolveRelativePath(baseDir, relativePath) {
+            if (!baseDir) return relativePath;
+            const baseParts = baseDir.split('/').filter(Boolean);
+            const relParts = relativePath.split('/');
+            
+            for (const part of relParts) {
+                if (part === '.') continue;
+                if (part === '..') {
+                    baseParts.pop();
+                } else {
+                    baseParts.push(part);
+                }
+            }
+            return baseParts.join('/');
+        }
+
+        // HTML parser utility to extract clean plain text from documents
+        function stripHtmlTags(html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            return doc.body.textContent || doc.body.innerText || "";
+        }
+
+        // Unicode character-to-Pixel Generator Logic
+        function generateNoiseImage() {
+            const rawText = textInput.value;
+            if (!rawText.trim()) {
+                showToast("Please enter some text to encode before generating.", "error");
+                return;
+            }
+
+            // Correctly parse high plane characters & emojis into single array elements
+            const chars = Array.from(rawText);
+            const totalDataChars = chars.length;
+
+            // Space Requirements:
+            // Pixel 0: Magic Header (R,G,B)
+            // Pixel 1: Message Length (32-bit uint spread across R,G,B,A)
+            // Pixel 2 to N: Data pixels (one pixel per Unicode character codepoint)
+            const requiredPixels = 2 + totalDataChars;
+
+            // Decide grid dimensions (Width & Height)
+            let width = 0;
+            let height = 0;
+
+            const gridSelect = document.getElementById('noise-pad').value;
+            if (gridSelect === 'auto') {
+                // Find nearest square that fits all required pixels
+                const side = Math.ceil(Math.sqrt(requiredPixels));
+                width = side;
+                height = side;
+            } else {
+                const side = parseInt(gridSelect, 10);
+                if (requiredPixels > side * side) {
+                    showToast(`The text contains too many characters (${totalDataChars.toLocaleString()}) for a ${side}x${side} grid. Please increase the resolution.`, "error");
+                    return;
+                }
+                width = side;
+                height = side;
+            }
+
+            const totalPixels = width * height;
+            const padPixels = totalPixels - requiredPixels;
+
+            // Initialize canvas and context
+            const canvas = document.getElementById('noise-canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            canvas.width = width;
+            canvas.height = height;
+
+            // Update display style
+            canvas.style.transform = `scale(${document.getElementById('zoom-slider').value / 10})`;
+            document.getElementById('canvas-placeholder').classList.add('hidden');
+            
+            // Create target ImageData array
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            // Write Pixel 0: Magic Header
+            data[0] = MAGIC_HEADER[0]; // R
+            data[1] = MAGIC_HEADER[1]; // G
+            data[2] = MAGIC_HEADER[2]; // B
+            data[3] = 255;             // A (Keep header opaque)
+
+            // Write Pixel 1: Payload Length (32-bit Integer representable up to 2^32 characters)
+            data[4] = (totalDataChars >>> 24) & 255; // R
+            data[5] = (totalDataChars >>> 16) & 255; // G
+            data[6] = (totalDataChars >>> 8) & 255;  // B
+            data[7] = totalDataChars & 255;         // A
+
+            // Write Data Pixels (Starting from pixel index 2)
+            for (let i = 0; i < totalDataChars; i++) {
+                const cp = chars[i].codePointAt(0); // Safely get full 21-bit codepoint
+                const pixelOffset = (2 + i) * 4;
+
+                // Extract 3 bytes of Unicode codepoint (Max standard unicode is 0x10FFFF)
+                const rByte = (cp >>> 16) & 255;
+                const gByte = (cp >>> 8) & 255;
+                const bByte = cp & 255;
+
+                // Apply position-dependent scrambling offsets to distribute colors evenly
+                // This makes plain ASCII text visually dynamic instead of flat dark cyan.
+                let offset_R = (i * 37) % 256;
+                let offset_G = (i * 59) % 256;
+                let offset_B = (i * 113) % 256;
+
+                data[pixelOffset]     = (rByte + offset_R) % 256; 
+                data[pixelOffset + 1] = (gByte + offset_G) % 256; 
+                data[pixelOffset + 2] = (bByte + offset_B) % 256; 
+
+                // Alpha is kept at 255 for data pixels. This is crucial:
+                // If opacity < 255, browser canvas engines perform lossy alpha premultiplication,
+                // modifying RGB values on readback and corrupting delicate Unicode values.
+                data[pixelOffset + 3] = 255; 
+            }
+
+            // Fill Remaining Pixels with random visual noise (and random opacity for background aesthetics)
+            for (let i = requiredPixels; i < totalPixels; i++) {
+                const pixelOffset = i * 4;
+                data[pixelOffset] = Math.floor(Math.random() * 256);     // R
+                data[pixelOffset + 1] = Math.floor(Math.random() * 256); // G
+                data[pixelOffset + 2] = Math.floor(Math.random() * 256); // B
+                data[pixelOffset + 3] = 180 + Math.floor(Math.random() * 76); // Random Alpha (A)
+            }
+
+            // Paint the pixels onto the canvas
+            ctx.putImageData(imgData, 0, 0);
+
+            // Update Stats Display
+            document.getElementById('canvas-status').textContent = 'Image Ready';
+            document.getElementById('canvas-status').className = 'text-[10px] font-bold tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20';
+            
+            document.getElementById('stat-res').textContent = `${width} x ${height}`;
+            document.getElementById('stat-pixels').textContent = totalDataChars.toLocaleString();
+            document.getElementById('stat-pad').textContent = padPixels.toLocaleString();
+            
+            // File size estimation based on canvas dimensions
+            const estBytes = (width * height * 4);
+            document.getElementById('stat-size').textContent = `~${(estBytes / 1024).toFixed(1)} KB`;
+            document.getElementById('canvas-stats').classList.remove('hidden');
+
+            // Enable download action
+            const downloadBtn = document.getElementById('btn-download');
+            downloadBtn.removeAttribute('disabled');
+            downloadBtn.classList.remove('text-slate-400');
+            downloadBtn.classList.add('text-slate-100');
+
+            showToast("Text successfully encoded into noise image.", "success");
+        }
+
+        // Trigger Download of the Canvas
+        function downloadNoisePNG() {
+            const canvas = document.getElementById('noise-canvas');
+            if (!canvas || canvas.width === 0) return;
+
+            // Generate PNG blob
+            canvas.toBlob((blob) => {
+                if (generatedBlobUrl) {
+                    URL.revokeObjectURL(generatedBlobUrl);
+                }
+                generatedBlobUrl = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = generatedBlobUrl;
+                link.download = `noisify-canvas-${canvas.width}x${canvas.height}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showToast("PNG downloaded successfully.", "success");
+            }, 'image/png');
+        }
+
+        // Upload and Decode Elements
+        function triggerImageUpload() {
+            document.getElementById('image-loader').click();
+        }
+
+        // Drag and Drop implementation
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-purple-500', 'bg-purple-500/5');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-purple-500', 'bg-purple-500/5');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                document.getElementById('image-loader').files = files;
+                handleImageUpload({ target: { files: files } });
+            }
+        });
+
+        // Parse File and Feed to Canvas
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'image/png') {
+                showToast("Invalid file format. Please upload a lossless PNG image.", "error");
+                resetUploadZone();
+                return;
+            }
+
+            originalFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Display image info in Drop zone
+                    document.getElementById('upload-prompt').classList.add('hidden');
+                    const previewContainer = document.getElementById('upload-preview-container');
+                    previewContainer.classList.remove('hidden');
+                    previewContainer.classList.add('flex');
+                    
+                    document.getElementById('upload-preview').src = e.target.result;
+                    document.getElementById('upload-filename').textContent = file.name;
+                    document.getElementById('upload-dimensions').textContent = `${img.width} x ${img.height} pixels`;
+
+                    // Run decoding
+                    decodeNoiseFromImage(img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clean up upload interface
+        function resetUploadZone() {
+            document.getElementById('image-loader').value = '';
+            document.getElementById('upload-prompt').classList.remove('hidden');
+            document.getElementById('upload-preview-container').classList.add('hidden');
+            document.getElementById('upload-preview-container').classList.remove('flex');
+            document.getElementById('decoded-output').value = '';
+            
+            // Disable buttons
+            const copyBtn = document.getElementById('btn-copy');
+            copyBtn.setAttribute('disabled', 'true');
+            copyBtn.className = "sm:col-span-1 py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed";
+
+            ['btn-export-txt', 'btn-export-pdf', 'btn-export-epub'].forEach(id => {
+                const btn = document.getElementById(id);
+                btn.setAttribute('disabled', 'true');
+                btn.className = "py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-slate-100 font-bold text-xs tracking-wide transition border border-white/10 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed";
+            });
+            
+            const decStatus = document.getElementById('decode-status');
+            decStatus.textContent = 'Waiting...';
+            decStatus.className = 'text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-white/5 text-slate-400 border border-white/5';
+        }
+
+        // Decoder Engine
+        function decodeNoiseFromImage(img) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            try {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                // Validate Magic Header on Pixel 0 (R, G, B channels)
+                if (data[0] !== MAGIC_HEADER[0] || data[1] !== MAGIC_HEADER[1] || data[2] !== MAGIC_HEADER[2]) {
+                    showToast("Decryption failed. This is not a valid Noisify image file.", "error");
+                    const decStatus = document.getElementById('decode-status');
+                    decStatus.textContent = 'Invalid Image';
+                    decStatus.className = 'text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20';
+                    return;
+                }
+
+                // Read Length on Pixel 1 (32-bit uint)
+                const length = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+
+                if (length <= 0 || length > (canvas.width * canvas.height - 2)) {
+                    showToast("Metadata corruption detected. Length mismatch.", "error");
+                    return;
+                }
+
+                // Gather codepoints starting from Pixel 2
+                const decodedChars = [];
+                for (let i = 0; i < length; i++) {
+                    const pixelOffset = (2 + i) * 4;
+
+                    // Read channels
+                    const r_disp = data[pixelOffset];
+                    const g_disp = data[pixelOffset + 1];
+                    const b_disp = data[pixelOffset + 2];
+
+                    // Recalculate dynamic visual offsets
+                    let offset_R = (i * 37) % 256;
+                    let offset_G = (i * 59) % 256;
+                    let offset_B = (i * 113) % 256;
+
+                    // Reverse math offsets safely
+                    const rByte = (r_disp - offset_R + 256) % 256;
+                    const gByte = (g_disp - offset_G + 256) % 256;
+                    const bByte = (b_disp - offset_B + 256) % 256;
+
+                    // Reconstruct 21-bit Unicode codepoint
+                    const cp = (rByte << 16) | (gByte << 8) | bByte;
+
+                    // Map codepoint back to high/low plane characters
+                    decodedChars.push(String.fromCodePoint(cp));
+                }
+
+                const decodedText = decodedChars.join('');
+
+                // Update UI Elements with output
+                const outputField = document.getElementById('decoded-output');
+                outputField.value = decodedText;
+
+                // Enable copy button
+                const copyBtn = document.getElementById('btn-copy');
+                copyBtn.removeAttribute('disabled');
+                copyBtn.classList.remove('text-slate-400');
+                copyBtn.classList.add('text-slate-100', 'bg-gradient-to-r', 'from-emerald-500', 'to-teal-600', 'hover:from-emerald-600', 'hover:to-teal-700', 'border-none');
+
+                // Enable export action buttons
+                ['btn-export-txt', 'btn-export-pdf', 'btn-export-epub'].forEach(id => {
+                    const btn = document.getElementById(id);
+                    btn.removeAttribute('disabled');
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-slate-200', 'bg-white/10', 'hover:bg-white/20', 'border-white/20');
+                });
+
+                const decStatus = document.getElementById('decode-status');
+                decStatus.textContent = 'Decoded Successfully';
+                decStatus.className = 'text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+
+                showToast("Text successfully decoded from image.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("An error occurred while decoding the image.", "error");
+            }
+        }
+
+        // Copy decoded payload to clipboard
+        function copyDecodedText() {
+            const outputText = document.getElementById('decoded-output');
+            if (!outputText.value) return;
+
+            outputText.select();
+            outputText.setSelectionRange(0, 99999); // For mobile compatibility
+
+            try {
+                document.execCommand('copy');
+                showToast('Text copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Failed to copy to clipboard. Please select and copy manually.', 'error');
+            }
+        }
+
+        // Universal Document Export Dispatcher
+        async function exportDecoded(format) {
+            const text = document.getElementById('decoded-output').value;
+            if (!text.trim()) {
+                showToast("There is no decoded text to export.", "error");
+                return;
+            }
+
+            if (format === 'txt') {
+                exportAsTxt(text);
+            } else if (format === 'pdf') {
+                exportAsPdf(text);
+            } else if (format === 'epub') {
+                await exportAsEpub(text);
+            }
+        }
+
+        // TXT Export Pipeline
+        function exportAsTxt(text) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `decoded-noisify-${Date.now()}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Successfully exported as .txt file!", "success");
+        }
+
+        // PDF Export Pipeline
+        function exportAsPdf(text) {
+            try {
+                // Highly compatible jsPDF constructor lookup
+                let jsPDFClass = null;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    jsPDFClass = window.jspdf.jsPDF;
+                } else if (window.jsPDF) {
+                    jsPDFClass = window.jsPDF;
+                }
+
+                if (!jsPDFClass) {
+                    showToast("PDF generation library failed to load. Please try again or check your connection.", "error");
+                    return;
+                }
+
+                const doc = new jsPDFClass();
+                
+                // Format lines to fit Standard A4 width boundary nicely
+                const splitText = doc.splitTextToSize(text, 180);
+                let y = 20;
+                const pageHeight = doc.internal.pageSize.height;
+
+                for (let i = 0; i < splitText.length; i++) {
+                    if (y > pageHeight - 20) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.text(splitText[i], 15, y);
+                    y += 7; // Line spacing increments
+                }
+
+                doc.save(`decoded-noisify-${Date.now()}.pdf`);
+                showToast("Successfully exported as .pdf document!", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Failed to compile PDF document.", "error");
+            }
+        }
+
+        // EPUB Export Pipeline via client-side XML tree assembly in JSZip
+        async function exportAsEpub(text) {
+            if (typeof JSZip === 'undefined') {
+                showToast("EPUB compiler library is not loaded. Please try again.", "error");
+                return;
+            }
+
+            try {
+                const zip = new JSZip();
+                
+                // 1. mimetype (MUST be store-only / uncompressed according to epub specifications)
+                zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+                
+                // 2. META-INF/container.xml pointing towards OPF layout schema
+                const containerXml = `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`;
+                zip.file("META-INF/container.xml", containerXml);
+                
+                // Format the text inside strict XHTML tags, resolving characters safely for DOM XML streams
+                const escapedText = text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&apos;")
+                    .replace(/\n/g, "<br/>");
+
+                // 3. OEBPS/text.xhtml - XHTML Strict template for E-Reader parsing
+                const textXhtml = `<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Decoded Message</title>
+  <style type="text/css">
+    body { font-family: sans-serif; padding: 5%; line-height: 1.6; color: #222222; }
+    h1 { text-align: center; font-size: 1.5em; margin-bottom: 1.5em; color: #111111; }
+    div.content { margin: 0 auto; max-width: 600px; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Decoded Noisify Message</h1>
+  <div class="content">
+    ${escapedText}
+  </div>
+</body>
+</html>`;
+                zip.file("OEBPS/text.xhtml", textXhtml);
+                
+                // 4. OEBPS/toc.ncx (eBook structure index)
+                const tocNcx = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="urn:uuid:decoded-message-unique-id"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+  </head>
+  <docTitle>
+    <text>Decoded Noisify Message</text>
+  </docTitle>
+  <navMap>
+    <navPoint id="navPoint-1" playOrder="1">
+      <navLabel>
+        <text>Decoded Content</text>
+      </navLabel>
+      <content src="text.xhtml"/>
+    </navPoint>
+  </navMap>
+</ncx>`;
+                zip.file("OEBPS/toc.ncx", tocNcx);
+                
+                // 5. OEBPS/content.opf (Manifest index and reading order)
+                const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookID" version="2.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <dc:title>Decoded Noisify Message</dc:title>
+    <dc:language>en</dc:language>
+    <dc:identifier id="BookID" opf:scheme="UUID">urn:uuid:decoded-message-unique-id</dc:identifier>
+    <dc:creator>Noisify Encoder</dc:creator>
+  </metadata>
+  <manifest>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="content" href="text.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine toc="ncx">
+    <itemref idref="content"/>
+  </spine>
+</package>`;
+                zip.file("OEBPS/content.opf", contentOpf);
+                
+                // Generate container and trigger file download cleanly using standard Blob wrappers
+                const content = await zip.generateAsync({ type: "blob" });
+                const epubBlob = new Blob([content], { type: "application/epub+zip" });
+                const url = URL.createObjectURL(epubBlob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `decoded-noisify-${Date.now()}.epub`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("Successfully compiled and exported .epub eBook!", "success");
+            } catch (err) {
+                console.error("EPUB creation failed", err);
+                showToast("An error occurred compiling the eBook file.", "error");
+            }
+        }
+    </script>
+</body>
+</html>
