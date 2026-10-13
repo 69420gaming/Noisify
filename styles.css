@@ -1,0 +1,38 @@
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 50% 50%, #11101d 0%, #08070b 100%);
+        }
+        .heading-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        /* Custom scrollbar for aesthetic consistency */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d0c14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b2e5c;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f3b7c;
+        }
+        [role="tab"]:focus-visible,
+        button:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible,
+        input:focus-visible {
+            outline: 2px solid #c084fc;
+            outline-offset: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
